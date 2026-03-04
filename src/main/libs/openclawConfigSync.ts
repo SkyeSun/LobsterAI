@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { CoworkConfig, CoworkExecutionMode } from '../coworkStore';
-import { resolveCurrentApiConfig } from './claudeSettings';
+import { resolveRawApiConfig } from './claudeSettings';
 import type { OpenClawEngineManager } from './openclawEngineManager';
 
 const mapExecutionModeToSandboxMode = (mode: CoworkExecutionMode): 'off' | 'non-main' | 'all' => {
@@ -49,7 +49,7 @@ export class OpenClawConfigSync {
   sync(reason: string): OpenClawConfigSyncResult {
     const configPath = this.engineManager.getConfigPath();
     const coworkConfig = this.getCoworkConfig();
-    const apiResolution = resolveCurrentApiConfig('local');
+    const apiResolution = resolveRawApiConfig();
 
     if (!apiResolution.config) {
       return {
