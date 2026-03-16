@@ -37,6 +37,7 @@ import {
   syncMemoryFileOnWorkspaceChange,
   readBootstrapFile,
   writeBootstrapFile,
+  ensureDefaultIdentity,
 } from './libs/openclawMemoryFile';
 import {
   OpenClawChannelSessionSync,
@@ -637,6 +638,13 @@ const bootstrapOpenClawEngine = async (options: { forceReinstall?: boolean; reas
       console.log(`[OpenClaw] bootstrap: MCP bridge setup done (${elapsed()}), result=${bridgeResult ? `${bridgeResult.tools.length} tools` : 'null'}`);
       console.log(`[OpenClaw] bootstrap: mcpBridgeServer=${mcpBridgeServer?.callbackUrl || 'null'}, mcpServerManager.tools=${mcpServerManager?.toolManifest?.length ?? 'null'}, secret=${mcpBridgeSecret ? 'set' : 'null'}`);
 
+      // Ensure IDENTITY.md has default content in the current workspace
+      try {
+        ensureDefaultIdentity(getCoworkStore().getConfig().workingDirectory);
+      } catch (err) {
+        console.warn('[OpenClaw] bootstrap: ensureDefaultIdentity failed (non-fatal):', err);
+      }
+
       const syncResult = await syncOpenClawConfig({
         reason: `bootstrap:${reason}`,
         restartGatewayIfRunning: false,
@@ -1117,7 +1125,25 @@ const getIMGatewayManager = () => {
             await openClawRuntimeAdapter.connectGatewayIfNeeded();
           }
         },
-        createScheduledTask: async ({ sessionId, request }) => {
+        getOpenClawGatewayClient: () => openClawRuntimeAdapter?.getGatewayClient() ?? null,
+        ensureOpenClawGatewayReady: async () => {
+          if (!openClawRuntimeAdapter) {
+            throw new Error('OpenClaw runtime adapter not initialized.');
+          }
+          await openClawRuntimeAdapter.ensureReady();
+          await openClawRuntimeAdapter.connectGatewayIfNeeded();
+        },
+        getOpenClawSessionKeysForCoworkSession: (sessionId: string) => {
+          return openClawRuntimeAdapter?.getSessionKeysForSession(sessionId) ?? [];
+        },
+        createScheduledTask: async ({ sessionId, message, request }) => {
+          if (message.platform === 'dingtalk') {
+            await getIMGatewayManager().primeConversationReplyRoute(
+              message.platform,
+              message.conversationId,
+              sessionId,
+            );
+          }
           const task = await getCronJobService().addJob({
             name: request.taskName,
             description: '',
@@ -2375,6 +2401,12 @@ if (!gotTheLock) {
         const syncResult = syncMemoryFileOnWorkspaceChange(previousWorkingDir, normalizedConfig.workingDirectory);
         if (syncResult.error) {
           console.warn('[OpenClaw Memory] Workspace sync failed:', syncResult.error);
+        }
+        // Ensure IDENTITY.md has default content in the new workspace
+        try {
+          ensureDefaultIdentity(normalizedConfig.workingDirectory);
+        } catch (err) {
+          console.warn('[OpenClaw] ensureDefaultIdentity failed (non-fatal):', err);
         }
       }
 
