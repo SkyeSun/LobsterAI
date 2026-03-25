@@ -1301,7 +1301,11 @@ const getIMGatewayManager = () => {
             );
           }
           const channelName = PLATFORM_TO_CHANNEL_MAP[message.platform];
-          const hasChannel = !!(channelName && message.conversationId);
+          // xiaomifeng is not a native OpenClaw delivery channel — replies are
+          // relayed via IMCoworkHandler.sendAsyncReply → XiaomifengGateway.
+          // Use sessionTarget:'main' so IMCoworkHandler can intercept and relay.
+          const hasNativeDelivery = message.platform !== 'xiaomifeng';
+          const hasChannel = !!(channelName && message.conversationId) && hasNativeDelivery;
           // Strip IM subtype prefix (e.g. "direct:ou_xxx" -> "ou_xxx")
           let deliveryTo = message.conversationId;
           if (hasChannel && deliveryTo) {

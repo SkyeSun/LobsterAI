@@ -14,7 +14,6 @@ import type { IMMessage, IMPlatform, IMMediaAttachment, IMSessionMapping } from 
 import { buildIMMediaInstruction } from './imMediaInstruction';
 import { analyzeIMReply, DEFAULT_IM_EMPTY_REPLY } from './imReplyGuard';
 import {
-  isReminderSystemTurn,
   type IMScheduledTaskCreationResult,
   type IMScheduledTaskRequestDetector,
   type ParsedIMScheduledTaskRequest,
@@ -860,9 +859,6 @@ export class IMCoworkHandler extends EventEmitter {
 
     if (accumulator.backgroundDelivery) {
       if (!this.sendAsyncReply || !replyText || replyText === '处理完成，但没有生成回复。') {
-        return;
-      }
-      if (!isReminderSystemTurn(messages)) {
         return;
       }
       void this.sendAsyncReply(
